@@ -15,9 +15,7 @@ load("data/fMRIdata.Rda")
 
 ```
 
-# Demographic variables: education and income
-
-```{r descriptives, echo = FALSE}
+```{r Demographic variables: education and income, echo = FALSE}
 
 #---------------Spanish survey-----------------
 # income (net household monthly income): 1 = no income, 2 = <300 euros/mo,  3 = 300-600, 4 = 600-900, 5 = 900-1200, 6 = 1200-1800, 7 =  1800-2400, 8 = 2400-3000, 9 = 3000-4500, 10 = 4500-6000, 11 = <6000
@@ -319,6 +317,32 @@ PairwiseComparison
 
 ```
 
+# Sacred values did not moderate the effect of fact-checks.
+
+```{r moderation of sacred values on effect of fact-checks}
+
+#-------------------------------------------------
+#               Spanish survey
+#-------------------------------------------------
+## sacred values do not affect participant's response to fact-checks
+FactCheckFit <- ESdf %>% 
+  lmer(sharing ~ factcheck * value + (1|identity), .)
+
+summary(FactCheckFit)
+
+#-------------------------------------------------
+#               US survey
+#-------------------------------------------------
+## sacred values do not affect participant's response to fact-checks
+FactCheckFit <- USdf %>% 
+  filter(Group %in% "fact-checked") %>% 
+  lmer(sharing ~ factcheck * value + (1|identity), .)
+
+summary(FactCheckFit)
+
+```
+
+
 ## OTHER EFFECTS: 
 Moral-emotional language had mixed effects across samples. 
 
@@ -353,6 +377,7 @@ LanguageFit <- USdf %>%
   lmer(sharing ~ language * FusedTrump + (1|identity), .)
 
 summary(LanguageFit)
+
 
 ```
 
