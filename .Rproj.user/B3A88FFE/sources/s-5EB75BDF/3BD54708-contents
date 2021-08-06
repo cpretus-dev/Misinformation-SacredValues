@@ -1,0 +1,1263 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup}
+
+library(tidyverse) # for data 
+library(haven) # loads data
+library(labelled) # SPSS labels
+library(skimr) # to skim data
+library(psych) # for fa()
+library(afex) # for mixed-effect models with p-value
+library(interactions) # for insteraction plots
+library(emmeans) # for estimated means
+library(stargazer) # for estimated means
+library(readxl) #read excel
+library(ggpubr) #plots
+library(simr) #power analysis
+library(Hmisc) #correlation matrix
+library(corrplot) #correlation matrix
+library(effsize)
+library(cowplot)
+
+#SourceFile <- "data/ES25936900_Twitter_PARTIAL_SENT15012021.csv"
+#SourceFile <- "data/ES25936900_Twitter_PARTIAL_SENT10022021.csv"
+SourceFile <- "data/ES25936900_Twitter_FINAL_SENT26022021.csv"
+
+#DEL 1 AL 8 SON SV CON MORAL-EMOTIONAL LANGUAGE
+#DEL 9 AL 16 SON N-SV CON MORAL-EMOTIONAL LANGUAGE
+#DEL 17 AL 24 SON SV CON NEUTRAL LANGUAGE
+#DEL 25 AL 32 SON N-SV CON NEUTRAL LANGUAGE
+
+```
+
+```{r data import and clean}
+
+TwDF <- read_csv(SourceFile)
+
+# filter out useless variables
+TwDF <- TwDF %>% 
+  select(-(q_chosen_baseline_vox_1:q_chosen_baseline_vox_32))
+
+# TwDF <- TwDF %>% 
+#   select(-(group_vox_1:group_vox_32))
+
+TwDF <- TwDF %>% 
+  select(-(G1_vox_1:ExpVoxG1))
+
+TwDF <- TwDF %>% 
+  select(-(G2_vox_1:ExpVoxG2)) 
+
+TwDF <- TwDF %>% 
+  select(-(G3_vox_1:ExpVoxG3))
+
+TwDF <- TwDF %>% 
+  select(-(q_chosen_baseline_pp_1:Baselinepp))
+
+TwDF <- TwDF %>% 
+  select(-(group_pp_1:ExpPPG1))
+
+TwDF <- TwDF %>% 
+  select(-(G2_pp_1:ExpPPG2))
+
+TwDF <- TwDF %>% 
+  select(-(G3_pp_1:ExpPPG3))
+
+
+# rename variables
+TwDF <- TwDF %>%
+  rename(identity = caseid, politicalOrientation = ES_ubicacion_izq_der, votersGroup = qsample, flagGroupVox = qgroupVox, flagGroupPP = qgroupPP, Use_Tw = Use_1, Use_Fb = Use_2, Use_Ig = Use_3)
+
+# convert "9" into missings
+TwDF <- TwDF %>%
+  mutate_at(vars(starts_with("Baseline"), starts_with("Exp"), starts_with("Fusion"), starts_with("Familiarity"),starts_with("SV"), flagGroupVox), funs(ifelse(. %in% 9, NA, .)))
+
+TwDF <- TwDF %>%
+  mutate_at(vars(income_ES), funs(ifelse(. %in% c(95, 96), NA, .)))
+
+TwDF <- TwDF %>%
+  mutate_at(vars(educ_level_ES), funs(ifelse(. %in% c(12, 13), NA, .)))
+
+```
+
+```{r merge pp and vox into same response variable}
+
+# merge pp and vox into same response variable
+
+#BaselineVox_1:BaselineVox_32, Baselinepp_1:Baselinepp_32, ExpVoxG1_1:ExpVoxG1_64, ExpPPG1_1:ExpPPG1_64
+
+
+TwDF <- TwDF %>%
+  mutate(flagGroup = ifelse(flagGroupVox %in% NA, flagGroupPP, flagGroupVox),
+         Baseline_1 = ifelse(BaselineVox_1 %in% NA, Baselinepp_1, BaselineVox_1),
+         Baseline_2 = ifelse(BaselineVox_2 %in% NA, Baselinepp_2, BaselineVox_2),
+         Baseline_3 = ifelse(BaselineVox_3 %in% NA, Baselinepp_3, BaselineVox_3),
+         Baseline_4 = ifelse(BaselineVox_4 %in% NA, Baselinepp_4, BaselineVox_4),
+         Baseline_5 = ifelse(BaselineVox_5 %in% NA, Baselinepp_5, BaselineVox_5),
+         Baseline_6 = ifelse(BaselineVox_6 %in% NA, Baselinepp_6, BaselineVox_6),
+         Baseline_7 = ifelse(BaselineVox_7 %in% NA, Baselinepp_7, BaselineVox_7),
+         Baseline_8 = ifelse(BaselineVox_8 %in% NA, Baselinepp_8, BaselineVox_8),
+         Baseline_9 = ifelse(BaselineVox_9 %in% NA, Baselinepp_9, BaselineVox_9),
+         Baseline_10 = ifelse(BaselineVox_10 %in% NA, Baselinepp_10, BaselineVox_10),
+         Baseline_11 = ifelse(BaselineVox_11 %in% NA, Baselinepp_11, BaselineVox_11),
+         Baseline_12 = ifelse(BaselineVox_12 %in% NA, Baselinepp_12, BaselineVox_12),
+         Baseline_13 = ifelse(BaselineVox_13 %in% NA, Baselinepp_13, BaselineVox_13),
+         Baseline_14 = ifelse(BaselineVox_14 %in% NA, Baselinepp_14, BaselineVox_14),
+         Baseline_15 = ifelse(BaselineVox_15 %in% NA, Baselinepp_15, BaselineVox_15),
+         Baseline_16 = ifelse(BaselineVox_16 %in% NA, Baselinepp_16, BaselineVox_16),
+         Baseline_17 = ifelse(BaselineVox_17 %in% NA, Baselinepp_17, BaselineVox_17),
+         Baseline_18 = ifelse(BaselineVox_18 %in% NA, Baselinepp_18, BaselineVox_18),
+         Baseline_19 = ifelse(BaselineVox_19 %in% NA, Baselinepp_19, BaselineVox_19),
+         Baseline_20 = ifelse(BaselineVox_20 %in% NA, Baselinepp_20, BaselineVox_20),
+         Baseline_21 = ifelse(BaselineVox_21 %in% NA, Baselinepp_21, BaselineVox_21),
+         Baseline_22 = ifelse(BaselineVox_22 %in% NA, Baselinepp_22, BaselineVox_22),
+         Baseline_23 = ifelse(BaselineVox_23 %in% NA, Baselinepp_23, BaselineVox_23),
+         Baseline_24 = ifelse(BaselineVox_24 %in% NA, Baselinepp_24, BaselineVox_24),
+         Baseline_25 = ifelse(BaselineVox_25 %in% NA, Baselinepp_25, BaselineVox_25),
+         Baseline_26 = ifelse(BaselineVox_26 %in% NA, Baselinepp_26, BaselineVox_26),
+         Baseline_27 = ifelse(BaselineVox_27 %in% NA, Baselinepp_27, BaselineVox_27),
+         Baseline_28 = ifelse(BaselineVox_28 %in% NA, Baselinepp_28, BaselineVox_28),
+         Baseline_29 = ifelse(BaselineVox_29 %in% NA, Baselinepp_29, BaselineVox_29),
+         Baseline_30 = ifelse(BaselineVox_30 %in% NA, Baselinepp_30, BaselineVox_30),
+         Baseline_31 = ifelse(BaselineVox_31 %in% NA, Baselinepp_31, BaselineVox_31),
+         Baseline_32 = ifelse(BaselineVox_32 %in% NA, Baselinepp_32, BaselineVox_32),
+         Exp_G1_1 = ifelse(ExpVoxG1_1 %in% NA, ExpPPG1_1, ExpVoxG1_1),
+         Exp_G1_2 = ifelse(ExpVoxG1_2 %in% NA, ExpPPG1_2, ExpVoxG1_2),
+         Exp_G1_3 = ifelse(ExpVoxG1_3 %in% NA, ExpPPG1_3, ExpVoxG1_3),
+         Exp_G1_4 = ifelse(ExpVoxG1_4 %in% NA, ExpPPG1_4, ExpVoxG1_4),
+         Exp_G1_5 = ifelse(ExpVoxG1_5 %in% NA, ExpPPG1_5, ExpVoxG1_5),
+         Exp_G1_6 = ifelse(ExpVoxG1_6 %in% NA, ExpPPG1_6, ExpVoxG1_6),
+         Exp_G1_7 = ifelse(ExpVoxG1_7 %in% NA, ExpPPG1_7, ExpVoxG1_7),
+         Exp_G1_8 = ifelse(ExpVoxG1_8 %in% NA, ExpPPG1_8, ExpVoxG1_8),
+         Exp_G1_9 = ifelse(ExpVoxG1_9 %in% NA, ExpPPG1_9, ExpVoxG1_9),
+         Exp_G1_10 = ifelse(ExpVoxG1_10 %in% NA, ExpPPG1_10, ExpVoxG1_10),
+         Exp_G1_11 = ifelse(ExpVoxG1_11 %in% NA, ExpPPG1_11, ExpVoxG1_11),
+         Exp_G1_12 = ifelse(ExpVoxG1_12 %in% NA, ExpPPG1_12, ExpVoxG1_12),
+         Exp_G1_13 = ifelse(ExpVoxG1_13 %in% NA, ExpPPG1_13, ExpVoxG1_13),
+         Exp_G1_14 = ifelse(ExpVoxG1_14 %in% NA, ExpPPG1_14, ExpVoxG1_14),
+         Exp_G1_15 = ifelse(ExpVoxG1_15 %in% NA, ExpPPG1_15, ExpVoxG1_15),
+         Exp_G1_16 = ifelse(ExpVoxG1_16 %in% NA, ExpPPG1_16, ExpVoxG1_16),
+         Exp_G1_17 = ifelse(ExpVoxG1_17 %in% NA, ExpPPG1_17, ExpVoxG1_17),
+         Exp_G1_18 = ifelse(ExpVoxG1_18 %in% NA, ExpPPG1_18, ExpVoxG1_18),
+         Exp_G1_19 = ifelse(ExpVoxG1_19 %in% NA, ExpPPG1_19, ExpVoxG1_19),
+         Exp_G1_20 = ifelse(ExpVoxG1_20 %in% NA, ExpPPG1_20, ExpVoxG1_20),
+         Exp_G1_21 = ifelse(ExpVoxG1_21 %in% NA, ExpPPG1_21, ExpVoxG1_21),
+         Exp_G1_22 = ifelse(ExpVoxG1_22 %in% NA, ExpPPG1_22, ExpVoxG1_22),
+         Exp_G1_23 = ifelse(ExpVoxG1_23 %in% NA, ExpPPG1_23, ExpVoxG1_23),
+         Exp_G1_24 = ifelse(ExpVoxG1_24 %in% NA, ExpPPG1_24, ExpVoxG1_24),
+         Exp_G1_25 = ifelse(ExpVoxG1_25 %in% NA, ExpPPG1_25, ExpVoxG1_25),
+         Exp_G1_26 = ifelse(ExpVoxG1_26 %in% NA, ExpPPG1_26, ExpVoxG1_26),
+         Exp_G1_27 = ifelse(ExpVoxG1_27 %in% NA, ExpPPG1_27, ExpVoxG1_27),
+         Exp_G1_28 = ifelse(ExpVoxG1_28 %in% NA, ExpPPG1_28, ExpVoxG1_28),
+         Exp_G1_29 = ifelse(ExpVoxG1_29 %in% NA, ExpPPG1_29, ExpVoxG1_29),
+         Exp_G1_30 = ifelse(ExpVoxG1_30 %in% NA, ExpPPG1_30, ExpVoxG1_30),
+         Exp_G1_31 = ifelse(ExpVoxG1_31 %in% NA, ExpPPG1_31, ExpVoxG1_31),
+         Exp_G1_32 = ifelse(ExpVoxG1_32 %in% NA, ExpPPG1_32, ExpVoxG1_32),
+         Exp_G1_G1_1 = ifelse(ExpVoxG1_33 %in% NA, ExpPPG1_33, ExpVoxG1_33),
+         Exp_G1_G1_2 = ifelse(ExpVoxG1_34 %in% NA, ExpPPG1_34, ExpVoxG1_34),
+         Exp_G1_G1_3 = ifelse(ExpVoxG1_35 %in% NA, ExpPPG1_35, ExpVoxG1_35),
+         Exp_G1_G1_4 = ifelse(ExpVoxG1_36 %in% NA, ExpPPG1_36, ExpVoxG1_36),
+         Exp_G1_G1_5 = ifelse(ExpVoxG1_37 %in% NA, ExpPPG1_37, ExpVoxG1_37),
+         Exp_G1_G1_6 = ifelse(ExpVoxG1_38 %in% NA, ExpPPG1_38, ExpVoxG1_38),
+         Exp_G1_G1_7 = ifelse(ExpVoxG1_39 %in% NA, ExpPPG1_39, ExpVoxG1_39),
+         Exp_G1_G1_8 = ifelse(ExpVoxG1_40 %in% NA, ExpPPG1_40, ExpVoxG1_40),
+         Exp_G1_G1_9 = ifelse(ExpVoxG1_41 %in% NA, ExpPPG1_41, ExpVoxG1_41),
+         Exp_G1_G1_10 = ifelse(ExpVoxG1_42 %in% NA, ExpPPG1_42, ExpVoxG1_42),
+         Exp_G1_G1_11 = ifelse(ExpVoxG1_43 %in% NA, ExpPPG1_43, ExpVoxG1_43),
+         Exp_G1_G1_12 = ifelse(ExpVoxG1_44 %in% NA, ExpPPG1_44, ExpVoxG1_44),
+         Exp_G1_G1_13 = ifelse(ExpVoxG1_45 %in% NA, ExpPPG1_45, ExpVoxG1_45),
+         Exp_G1_G1_14 = ifelse(ExpVoxG1_46 %in% NA, ExpPPG1_46, ExpVoxG1_46),
+         Exp_G1_G1_15 = ifelse(ExpVoxG1_47 %in% NA, ExpPPG1_47, ExpVoxG1_47),
+         Exp_G1_G1_16 = ifelse(ExpVoxG1_48 %in% NA, ExpPPG1_48, ExpVoxG1_48),
+         Exp_G1_G1_17 = ifelse(ExpVoxG1_49 %in% NA, ExpPPG1_49, ExpVoxG1_49),
+         Exp_G1_G1_18 = ifelse(ExpVoxG1_50 %in% NA, ExpPPG1_50, ExpVoxG1_50),
+         Exp_G1_G1_19 = ifelse(ExpVoxG1_51 %in% NA, ExpPPG1_51, ExpVoxG1_51),
+         Exp_G1_G1_20 = ifelse(ExpVoxG1_52 %in% NA, ExpPPG1_52, ExpVoxG1_52),
+         Exp_G1_G1_21 = ifelse(ExpVoxG1_53 %in% NA, ExpPPG1_53, ExpVoxG1_53),
+         Exp_G1_G1_22 = ifelse(ExpVoxG1_54 %in% NA, ExpPPG1_54, ExpVoxG1_54),
+         Exp_G1_G1_23 = ifelse(ExpVoxG1_55 %in% NA, ExpPPG1_55, ExpVoxG1_55),
+         Exp_G1_G1_24 = ifelse(ExpVoxG1_56 %in% NA, ExpPPG1_56, ExpVoxG1_56),
+         Exp_G1_G1_25 = ifelse(ExpVoxG1_57 %in% NA, ExpPPG1_57, ExpVoxG1_57),
+         Exp_G1_G1_26 = ifelse(ExpVoxG1_58 %in% NA, ExpPPG1_58, ExpVoxG1_58),
+         Exp_G1_G1_27 = ifelse(ExpVoxG1_59 %in% NA, ExpPPG1_59, ExpVoxG1_59),
+         Exp_G1_G1_28 = ifelse(ExpVoxG1_60 %in% NA, ExpPPG1_60, ExpVoxG1_60),
+         Exp_G1_G1_29 = ifelse(ExpVoxG1_61 %in% NA, ExpPPG1_61, ExpVoxG1_61),
+         Exp_G1_G1_30 = ifelse(ExpVoxG1_62 %in% NA, ExpPPG1_62, ExpVoxG1_62),
+         Exp_G1_G1_31 = ifelse(ExpVoxG1_63 %in% NA, ExpPPG1_63, ExpVoxG1_63),
+         Exp_G1_G1_32 = ifelse(ExpVoxG1_64 %in% NA, ExpPPG1_64, ExpVoxG1_64),
+                  Exp_G2_1 = ifelse(ExpVoxG2_1 %in% NA, ExpPPG2_1, ExpVoxG2_1),
+         Exp_G2_2 = ifelse(ExpVoxG2_2 %in% NA, ExpPPG2_2, ExpVoxG2_2),
+         Exp_G2_3 = ifelse(ExpVoxG2_3 %in% NA, ExpPPG2_3, ExpVoxG2_3),
+         Exp_G2_4 = ifelse(ExpVoxG2_4 %in% NA, ExpPPG2_4, ExpVoxG2_4),
+         Exp_G2_5 = ifelse(ExpVoxG2_5 %in% NA, ExpPPG2_5, ExpVoxG2_5),
+         Exp_G2_6 = ifelse(ExpVoxG2_6 %in% NA, ExpPPG2_6, ExpVoxG2_6),
+         Exp_G2_7 = ifelse(ExpVoxG2_7 %in% NA, ExpPPG2_7, ExpVoxG2_7),
+         Exp_G2_8 = ifelse(ExpVoxG2_8 %in% NA, ExpPPG2_8, ExpVoxG2_8),
+         Exp_G2_9 = ifelse(ExpVoxG2_9 %in% NA, ExpPPG2_9, ExpVoxG2_9),
+         Exp_G2_10 = ifelse(ExpVoxG2_10 %in% NA, ExpPPG2_10, ExpVoxG2_10),
+         Exp_G2_11 = ifelse(ExpVoxG2_11 %in% NA, ExpPPG2_11, ExpVoxG2_11),
+         Exp_G2_12 = ifelse(ExpVoxG2_12 %in% NA, ExpPPG2_12, ExpVoxG2_12),
+         Exp_G2_13 = ifelse(ExpVoxG2_13 %in% NA, ExpPPG2_13, ExpVoxG2_13),
+         Exp_G2_14 = ifelse(ExpVoxG2_14 %in% NA, ExpPPG2_14, ExpVoxG2_14),
+         Exp_G2_15 = ifelse(ExpVoxG2_15 %in% NA, ExpPPG2_15, ExpVoxG2_15),
+         Exp_G2_16 = ifelse(ExpVoxG2_16 %in% NA, ExpPPG2_16, ExpVoxG2_16),
+         Exp_G2_17 = ifelse(ExpVoxG2_17 %in% NA, ExpPPG2_17, ExpVoxG2_17),
+         Exp_G2_18 = ifelse(ExpVoxG2_18 %in% NA, ExpPPG2_18, ExpVoxG2_18),
+         Exp_G2_19 = ifelse(ExpVoxG2_19 %in% NA, ExpPPG2_19, ExpVoxG2_19),
+         Exp_G2_20 = ifelse(ExpVoxG2_20 %in% NA, ExpPPG2_20, ExpVoxG2_20),
+         Exp_G2_21 = ifelse(ExpVoxG2_21 %in% NA, ExpPPG2_21, ExpVoxG2_21),
+         Exp_G2_22 = ifelse(ExpVoxG2_22 %in% NA, ExpPPG2_22, ExpVoxG2_22),
+         Exp_G2_23 = ifelse(ExpVoxG2_23 %in% NA, ExpPPG2_23, ExpVoxG2_23),
+         Exp_G2_24 = ifelse(ExpVoxG2_24 %in% NA, ExpPPG2_24, ExpVoxG2_24),
+         Exp_G2_25 = ifelse(ExpVoxG2_25 %in% NA, ExpPPG2_25, ExpVoxG2_25),
+         Exp_G2_26 = ifelse(ExpVoxG2_26 %in% NA, ExpPPG2_26, ExpVoxG2_26),
+         Exp_G2_27 = ifelse(ExpVoxG2_27 %in% NA, ExpPPG2_27, ExpVoxG2_27),
+         Exp_G2_28 = ifelse(ExpVoxG2_28 %in% NA, ExpPPG2_28, ExpVoxG2_28),
+         Exp_G2_29 = ifelse(ExpVoxG2_29 %in% NA, ExpPPG2_29, ExpVoxG2_29),
+         Exp_G2_30 = ifelse(ExpVoxG2_30 %in% NA, ExpPPG2_30, ExpVoxG2_30),
+         Exp_G2_31 = ifelse(ExpVoxG2_31 %in% NA, ExpPPG2_31, ExpVoxG2_31),
+         Exp_G2_32 = ifelse(ExpVoxG2_32 %in% NA, ExpPPG2_32, ExpVoxG2_32),
+         Exp_G2_G2_1 = ifelse(ExpVoxG2_33 %in% NA, ExpPPG2_33, ExpVoxG2_33),
+         Exp_G2_G2_2 = ifelse(ExpVoxG2_34 %in% NA, ExpPPG2_34, ExpVoxG2_34),
+         Exp_G2_G2_3 = ifelse(ExpVoxG2_35 %in% NA, ExpPPG2_35, ExpVoxG2_35),
+         Exp_G2_G2_4 = ifelse(ExpVoxG2_36 %in% NA, ExpPPG2_36, ExpVoxG2_36),
+         Exp_G2_G2_5 = ifelse(ExpVoxG2_37 %in% NA, ExpPPG2_37, ExpVoxG2_37),
+         Exp_G2_G2_6 = ifelse(ExpVoxG2_38 %in% NA, ExpPPG2_38, ExpVoxG2_38),
+         Exp_G2_G2_7 = ifelse(ExpVoxG2_39 %in% NA, ExpPPG2_39, ExpVoxG2_39),
+         Exp_G2_G2_8 = ifelse(ExpVoxG2_40 %in% NA, ExpPPG2_40, ExpVoxG2_40),
+         Exp_G2_G2_9 = ifelse(ExpVoxG2_41 %in% NA, ExpPPG2_41, ExpVoxG2_41),
+         Exp_G2_G2_10 = ifelse(ExpVoxG2_42 %in% NA, ExpPPG2_42, ExpVoxG2_42),
+         Exp_G2_G2_11 = ifelse(ExpVoxG2_43 %in% NA, ExpPPG2_43, ExpVoxG2_43),
+         Exp_G2_G2_12 = ifelse(ExpVoxG2_44 %in% NA, ExpPPG2_44, ExpVoxG2_44),
+         Exp_G2_G2_13 = ifelse(ExpVoxG2_45 %in% NA, ExpPPG2_45, ExpVoxG2_45),
+         Exp_G2_G2_14 = ifelse(ExpVoxG2_46 %in% NA, ExpPPG2_46, ExpVoxG2_46),
+         Exp_G2_G2_15 = ifelse(ExpVoxG2_47 %in% NA, ExpPPG2_47, ExpVoxG2_47),
+         Exp_G2_G2_16 = ifelse(ExpVoxG2_48 %in% NA, ExpPPG2_48, ExpVoxG2_48),
+         Exp_G2_G2_17 = ifelse(ExpVoxG2_49 %in% NA, ExpPPG2_49, ExpVoxG2_49),
+         Exp_G2_G2_18 = ifelse(ExpVoxG2_50 %in% NA, ExpPPG2_50, ExpVoxG2_50),
+         Exp_G2_G2_19 = ifelse(ExpVoxG2_51 %in% NA, ExpPPG2_51, ExpVoxG2_51),
+         Exp_G2_G2_20 = ifelse(ExpVoxG2_52 %in% NA, ExpPPG2_52, ExpVoxG2_52),
+         Exp_G2_G2_21 = ifelse(ExpVoxG2_53 %in% NA, ExpPPG2_53, ExpVoxG2_53),
+         Exp_G2_G2_22 = ifelse(ExpVoxG2_54 %in% NA, ExpPPG2_54, ExpVoxG2_54),
+         Exp_G2_G2_23 = ifelse(ExpVoxG2_55 %in% NA, ExpPPG2_55, ExpVoxG2_55),
+         Exp_G2_G2_24 = ifelse(ExpVoxG2_56 %in% NA, ExpPPG2_56, ExpVoxG2_56),
+         Exp_G2_G2_25 = ifelse(ExpVoxG2_57 %in% NA, ExpPPG2_57, ExpVoxG2_57),
+         Exp_G2_G2_26 = ifelse(ExpVoxG2_58 %in% NA, ExpPPG2_58, ExpVoxG2_58),
+         Exp_G2_G2_27 = ifelse(ExpVoxG2_59 %in% NA, ExpPPG2_59, ExpVoxG2_59),
+         Exp_G2_G2_28 = ifelse(ExpVoxG2_60 %in% NA, ExpPPG2_60, ExpVoxG2_60),
+         Exp_G2_G2_29 = ifelse(ExpVoxG2_61 %in% NA, ExpPPG2_61, ExpVoxG2_61),
+         Exp_G2_G2_30 = ifelse(ExpVoxG2_62 %in% NA, ExpPPG2_62, ExpVoxG2_62),
+         Exp_G2_G2_31 = ifelse(ExpVoxG2_63 %in% NA, ExpPPG2_63, ExpVoxG2_63),
+         Exp_G2_G2_32 = ifelse(ExpVoxG2_64 %in% NA, ExpPPG2_64, ExpVoxG2_64),
+                  Exp_G3_1 = ifelse(ExpVoxG3_1 %in% NA, ExpPPG3_1, ExpVoxG3_1),
+         Exp_G3_2 = ifelse(ExpVoxG3_2 %in% NA, ExpPPG3_2, ExpVoxG3_2),
+         Exp_G3_3 = ifelse(ExpVoxG3_3 %in% NA, ExpPPG3_3, ExpVoxG3_3),
+         Exp_G3_4 = ifelse(ExpVoxG3_4 %in% NA, ExpPPG3_4, ExpVoxG3_4),
+         Exp_G3_5 = ifelse(ExpVoxG3_5 %in% NA, ExpPPG3_5, ExpVoxG3_5),
+         Exp_G3_6 = ifelse(ExpVoxG3_6 %in% NA, ExpPPG3_6, ExpVoxG3_6),
+         Exp_G3_7 = ifelse(ExpVoxG3_7 %in% NA, ExpPPG3_7, ExpVoxG3_7),
+         Exp_G3_8 = ifelse(ExpVoxG3_8 %in% NA, ExpPPG3_8, ExpVoxG3_8),
+         Exp_G3_9 = ifelse(ExpVoxG3_9 %in% NA, ExpPPG3_9, ExpVoxG3_9),
+         Exp_G3_10 = ifelse(ExpVoxG3_10 %in% NA, ExpPPG3_10, ExpVoxG3_10),
+         Exp_G3_11 = ifelse(ExpVoxG3_11 %in% NA, ExpPPG3_11, ExpVoxG3_11),
+         Exp_G3_12 = ifelse(ExpVoxG3_12 %in% NA, ExpPPG3_12, ExpVoxG3_12),
+         Exp_G3_13 = ifelse(ExpVoxG3_13 %in% NA, ExpPPG3_13, ExpVoxG3_13),
+         Exp_G3_14 = ifelse(ExpVoxG3_14 %in% NA, ExpPPG3_14, ExpVoxG3_14),
+         Exp_G3_15 = ifelse(ExpVoxG3_15 %in% NA, ExpPPG3_15, ExpVoxG3_15),
+         Exp_G3_16 = ifelse(ExpVoxG3_16 %in% NA, ExpPPG3_16, ExpVoxG3_16),
+         Exp_G3_17 = ifelse(ExpVoxG3_17 %in% NA, ExpPPG3_17, ExpVoxG3_17),
+         Exp_G3_18 = ifelse(ExpVoxG3_18 %in% NA, ExpPPG3_18, ExpVoxG3_18),
+         Exp_G3_19 = ifelse(ExpVoxG3_19 %in% NA, ExpPPG3_19, ExpVoxG3_19),
+         Exp_G3_20 = ifelse(ExpVoxG3_20 %in% NA, ExpPPG3_20, ExpVoxG3_20),
+         Exp_G3_21 = ifelse(ExpVoxG3_21 %in% NA, ExpPPG3_21, ExpVoxG3_21),
+         Exp_G3_22 = ifelse(ExpVoxG3_22 %in% NA, ExpPPG3_22, ExpVoxG3_22),
+         Exp_G3_23 = ifelse(ExpVoxG3_23 %in% NA, ExpPPG3_23, ExpVoxG3_23),
+         Exp_G3_24 = ifelse(ExpVoxG3_24 %in% NA, ExpPPG3_24, ExpVoxG3_24),
+         Exp_G3_25 = ifelse(ExpVoxG3_25 %in% NA, ExpPPG3_25, ExpVoxG3_25),
+         Exp_G3_26 = ifelse(ExpVoxG3_26 %in% NA, ExpPPG3_26, ExpVoxG3_26),
+         Exp_G3_27 = ifelse(ExpVoxG3_27 %in% NA, ExpPPG3_27, ExpVoxG3_27),
+         Exp_G3_28 = ifelse(ExpVoxG3_28 %in% NA, ExpPPG3_28, ExpVoxG3_28),
+         Exp_G3_29 = ifelse(ExpVoxG3_29 %in% NA, ExpPPG3_29, ExpVoxG3_29),
+         Exp_G3_30 = ifelse(ExpVoxG3_30 %in% NA, ExpPPG3_30, ExpVoxG3_30),
+         Exp_G3_31 = ifelse(ExpVoxG3_31 %in% NA, ExpPPG3_31, ExpVoxG3_31),
+         Exp_G3_32 = ifelse(ExpVoxG3_32 %in% NA, ExpPPG3_32, ExpVoxG3_32),
+         Exp_G3_G3_1 = ifelse(ExpVoxG3_33 %in% NA, ExpPPG3_33, ExpVoxG3_33),
+         Exp_G3_G3_2 = ifelse(ExpVoxG3_34 %in% NA, ExpPPG3_34, ExpVoxG3_34),
+         Exp_G3_G3_3 = ifelse(ExpVoxG3_35 %in% NA, ExpPPG3_35, ExpVoxG3_35),
+         Exp_G3_G3_4 = ifelse(ExpVoxG3_36 %in% NA, ExpPPG3_36, ExpVoxG3_36),
+         Exp_G3_G3_5 = ifelse(ExpVoxG3_37 %in% NA, ExpPPG3_37, ExpVoxG3_37),
+         Exp_G3_G3_6 = ifelse(ExpVoxG3_38 %in% NA, ExpPPG3_38, ExpVoxG3_38),
+         Exp_G3_G3_7 = ifelse(ExpVoxG3_39 %in% NA, ExpPPG3_39, ExpVoxG3_39),
+         Exp_G3_G3_8 = ifelse(ExpVoxG3_40 %in% NA, ExpPPG3_40, ExpVoxG3_40),
+         Exp_G3_G3_9 = ifelse(ExpVoxG3_41 %in% NA, ExpPPG3_41, ExpVoxG3_41),
+         Exp_G3_G3_10 = ifelse(ExpVoxG3_42 %in% NA, ExpPPG3_42, ExpVoxG3_42),
+         Exp_G3_G3_11 = ifelse(ExpVoxG3_43 %in% NA, ExpPPG3_43, ExpVoxG3_43),
+         Exp_G3_G3_12 = ifelse(ExpVoxG3_44 %in% NA, ExpPPG3_44, ExpVoxG3_44),
+         Exp_G3_G3_13 = ifelse(ExpVoxG3_45 %in% NA, ExpPPG3_45, ExpVoxG3_45),
+         Exp_G3_G3_14 = ifelse(ExpVoxG3_46 %in% NA, ExpPPG3_46, ExpVoxG3_46),
+         Exp_G3_G3_15 = ifelse(ExpVoxG3_47 %in% NA, ExpPPG3_47, ExpVoxG3_47),
+         Exp_G3_G3_16 = ifelse(ExpVoxG3_48 %in% NA, ExpPPG3_48, ExpVoxG3_48),
+         Exp_G3_G3_17 = ifelse(ExpVoxG3_49 %in% NA, ExpPPG3_49, ExpVoxG3_49),
+         Exp_G3_G3_18 = ifelse(ExpVoxG3_50 %in% NA, ExpPPG3_50, ExpVoxG3_50),
+         Exp_G3_G3_19 = ifelse(ExpVoxG3_51 %in% NA, ExpPPG3_51, ExpVoxG3_51),
+         Exp_G3_G3_20 = ifelse(ExpVoxG3_52 %in% NA, ExpPPG3_52, ExpVoxG3_52),
+         Exp_G3_G3_21 = ifelse(ExpVoxG3_53 %in% NA, ExpPPG3_53, ExpVoxG3_53),
+         Exp_G3_G3_22 = ifelse(ExpVoxG3_54 %in% NA, ExpPPG3_54, ExpVoxG3_54),
+         Exp_G3_G3_23 = ifelse(ExpVoxG3_55 %in% NA, ExpPPG3_55, ExpVoxG3_55),
+         Exp_G3_G3_24 = ifelse(ExpVoxG3_56 %in% NA, ExpPPG3_56, ExpVoxG3_56),
+         Exp_G3_G3_25 = ifelse(ExpVoxG3_57 %in% NA, ExpPPG3_57, ExpVoxG3_57),
+         Exp_G3_G3_26 = ifelse(ExpVoxG3_58 %in% NA, ExpPPG3_58, ExpVoxG3_58),
+         Exp_G3_G3_27 = ifelse(ExpVoxG3_59 %in% NA, ExpPPG3_59, ExpVoxG3_59),
+         Exp_G3_G3_28 = ifelse(ExpVoxG3_60 %in% NA, ExpPPG3_60, ExpVoxG3_60),
+         Exp_G3_G3_29 = ifelse(ExpVoxG3_61 %in% NA, ExpPPG3_61, ExpVoxG3_61),
+         Exp_G3_G3_30 = ifelse(ExpVoxG3_62 %in% NA, ExpPPG3_62, ExpVoxG3_62),
+         Exp_G3_G3_31 = ifelse(ExpVoxG3_63 %in% NA, ExpPPG3_63, ExpVoxG3_63),
+         Exp_G3_G3_32 = ifelse(ExpVoxG3_64 %in% NA, ExpPPG3_64, ExpVoxG3_64))
+
+
+TwDF <- TwDF %>%
+  mutate(Familiarity_1 = ifelse(Familiarity_vox_1_1 %in% NA, Familiarity_pp_1_1, Familiarity_vox_1_1),
+         Familiarity_2 = ifelse(Familiarity_vox_1_2 %in% NA, Familiarity_pp_1_2, Familiarity_vox_1_2 ),
+         Familiarity_3 = ifelse(Familiarity_vox_1_3 %in% NA, Familiarity_pp_1_3, Familiarity_vox_1_3),
+         Familiarity_4 = ifelse(Familiarity_vox_1_4 %in% NA, Familiarity_pp_1_4, Familiarity_vox_1_4 ),
+         Familiarity_5 = ifelse(Familiarity_vox_1_5 %in% NA, Familiarity_pp_1_5, Familiarity_vox_1_5),
+         Familiarity_6 = ifelse(Familiarity_vox_1_6 %in% NA, Familiarity_pp_1_6, Familiarity_vox_1_6),
+         Familiarity_7 = ifelse(Familiarity_vox_1_7 %in% NA, Familiarity_pp_1_7, Familiarity_vox_1_7),
+         SV_1 = ifelse(SV_vox_1 %in% NA, SV_pp_1, SV_vox_1),
+         SV_2 = ifelse(SV_vox_2 %in% NA, SV_pp_2, SV_vox_2),
+         SV_3 = ifelse(SV_vox_3 %in% NA, SV_pp_3, SV_vox_3),
+         SV_4 = ifelse(SV_vox_4 %in% NA, SV_pp_4, SV_vox_4),
+         SV_5 = ifelse(SV_vox_5 %in% NA, SV_pp_5, SV_vox_5),
+         SV_6 = ifelse(SV_vox_6 %in% NA, SV_pp_6, SV_vox_6),
+         SV_7 = ifelse(SV_vox_7 %in% NA, SV_pp_7, SV_vox_7),
+         Fusion = ifelse(FusionVox_1 %in% NA, FusionPP_1, FusionVox_1))
+
+#OLD: BaselineVox_1:BaselineVox_32, Baselinepp_1:Baselinepp_32, ExpVoxG1_1:ExpVoxG1_64, ExpPPG1_1:ExpPPG1_64         
+TwDF <- TwDF %>% 
+  select(-starts_with("BaselineVox"), -starts_with("ExpVox"), -starts_with("Baselinepp"), -starts_with("ExpPP"),
+         -starts_with("Familiarity_vox"), -starts_with("Familiarity_pp"), -starts_with("FusionPP"), -starts_with("FusionVox"), -flagGroupPP, -flagGroupVox)
+
+#reorder data frame
+TwDF <- TwDF %>% 
+  select(identity, votersGroup, flagGroup, age, gender:ES_votINT, politicalOrientation, Fusion, Baseline_1:Exp_G3_G3_32, Use_Tw:Use_Ig, Familiarity_1:SV_7, Med_1:Med_12, CRTa:CRTc, everything())
+
+
+save(TwDF,file="TwDF.Rda")
+
+```
+
+#START from here if reloading clean data frame
+
+```{r load data}
+
+load("TwDF.Rda")
+
+# TwDF <- TwDF %>% 
+#   select(identity, votersGroup, flagGroup, age, gender:ES_votINT, politicalOrientation, Fusion, Baseline_emo_1:Exp_G3_G3_32, Familiarity_1:Trust_7, Med_1:Med_12, CRTa:CRTc, everything())
+
+# recode as factor
+TwDF$votersGroup <- factor(TwDF$votersGroup, labels = c("far-right", "center-right"))
+TwDF$flagGroup <- factor(TwDF$flagGroup, labels = c("Accuracy", "Literacy", "Twitter"))
+TwDF$gender <- factor(TwDF$gender, labels = c("Male", "Female"))
+TwDF$ES_votINT <- factor(TwDF$ES_votINT)
+
+TwDF <- TwDF %>%
+  mutate(FactCheckGroup = fct_relevel(flagGroup, "Twitter", "Accuracy", "Literacy"))
+
+```
+
+```{r descriptives}
+##DESCRIPTIVES
+
+#income_ES: 1 = no income, 2 = <300 euros/mo,  3 = 300-600, 4 = 600-900, 5 = 900-1200, 6 = 1200-1800, 7 =  1800-2400, 8 = 2400-3000, 9 = 3000-4500, 10 = 4500-6000, 11 = <6000
+
+#education_ES: 1 = Ningún nivel, 2 = Primaria, 3 = Secundaria, 4 = Bachillerat, 5 = FP, 6 = Uni no finalizada, 7 = Diplomatura, 8 = Licenciatura, 9 = Master, 10 = Grado Medio, 11 = Doctorado, 12/13 = NS/NC
+
+#less than minimum wage
+prop.table(table(TwDF$income_ES[TwDF$votersGroup == "Vox"] == c(1, 2, 3, 4)))
+prop.table(table(TwDF$income_ES[TwDF$votersGroup == "PP"] == c(1, 2, 3, 4)))
+
+#more than 4500/month
+prop.table(table(TwDF$income_ES[TwDF$votersGroup == "Vox"] == c(10, 11)))
+prop.table(table(TwDF$income_ES[TwDF$votersGroup == "PP"] == c(10, 11)))
+
+#higher education
+prop.table(table(TwDF$educ_level_ES[TwDF$votersGroup == "Vox"] == c(1, 2, 3, 4)))
+prop.table(table(TwDF$educ_level_ES[TwDF$votersGroup == "PP"] == c(1, 2, 3, 4)))
+
+#higher education
+prop.table(table(TwDF$educ_level_ES[TwDF$votersGroup == "Vox"] > 6))
+prop.table(table(TwDF$educ_level_ES[TwDF$votersGroup == "PP"] > 6))
+
+TwDF %>% 
+  select(educ_level_ES, income_ES, politicalOrientation, gender, age, votersGroup) %>% 
+  group_by(votersGroup) %>% 
+  skim()
+
+```
+
+```{r create composite scores}
+
+
+TwDF <- TwDF %>%
+  mutate(CRTa = case_when(CRTa == 1 ~ 'intuitive', 
+                          CRTa == 2 ~ 'correct', 
+                          CRTa == 3 ~ 'wrong',
+                          CRTa == 4 ~ 'NS/NC'),
+         CRTb = case_when(CRTb == 1 ~ 'intuitive', 
+                          CRTb == 2 ~ 'intuitive', 
+                          CRTb == 3 ~ 'correct',
+                          CRTb == 4 ~ 'NS/NC'),
+         CRTc = case_when(CRTc == 1 ~ 'intuitive', 
+                          CRTc == 2 ~ 'wrong', 
+                          CRTc == 3 ~ 'correct',
+                          CRTc == 4 ~ 'NS/NC'))
+  
+#curiosity
+# TwDF %>% 
+#   select(Med_1, Med_2, Med_3) %>% #curiosity
+#   alpha() # .77
+
+TwDF <- TwDF %>% 
+  rowwise() %>% 
+  mutate(curiosity = mean(c(Med_1, Med_2, Med_3), na.rm = T))
+
+
+
+#humility
+##reverse items
+TwDF <- TwDF %>% 
+  mutate_at(vars(Med_4, Med_8, Med_9), funs(rev = 6 - .))
+  
+# TwDF %>% 
+#   select(Med_4_rev, Med_5, Med_6, Med_7, Med_8_rev, Med_9_rev) %>% #humility
+#   alpha() # .67
+
+TwDF <- TwDF %>% 
+  rowwise() %>% 
+  mutate(humility = mean(c(Med_4_rev, Med_5, Med_6, Med_7, Med_8_rev, Med_9_rev), na.rm = T))
+
+# #media literacy  
+# TwDF %>% 
+#   select(Med_10, Med_11, Med_12) %>% #humility
+#   alpha() # .7
+
+TwDF <- TwDF %>% 
+  rowwise() %>% 
+  mutate(literacy = mean(c(Med_10, Med_11, Med_12), na.rm = T))
+
+#social media use 
+# TwDF %>% 
+#   select(Use_Tw, Use_Ig, Use_Fb) %>%
+#   alpha() # .65
+
+TwDF <- TwDF %>% 
+  rowwise() %>% 
+  mutate(socialMediaUse = sum(c(Use_Tw, Use_Fb, Use_Ig), na.rm = T), TwitterUse = Use_Tw, 
+         FacebookUse = Use_Fb,
+         InstagramUse = Use_Ig,
+         education = educ_level_ES, 
+         income = income_ES)
+
+#intuitive responses crt
+TwDF <- TwDF %>% 
+  rowwise() %>%
+  mutate(crt_intuitive = sum(c(CRTa == 'intiutive', CRTb == 'intuitive', CRTc == 'intuitive'), na.rm = T))
+
+#correct responses crt
+TwDF <- TwDF %>% 
+  rowwise() %>%
+  mutate(crt_correct = sum(c(CRTa == 'correct', CRTb == 'correct', CRTc == 'correct'), na.rm = T))
+
+#crt: count of correct responses
+#TwDF <- TwDF %>% 
+#  rowwise() %>% 
+#  mutate(crt_correct = sum(c(CRTa, CRTb, CRTc) == 1, na.rm = T))
+
+#fused and non-fused
+TwDF <- TwDF %>% 
+  mutate(Fused = (Fusion == 5))
+
+#sacred values
+TwDF <- TwDF %>% 
+  mutate(SacredValue_nation = (SV_1 == 3),
+         SacredValue_immigration = (SV_2 == 3), 
+         SacredValue_family = (SV_3 == 3), 
+         SacredValue_foreignAffairs = (SV_4 == 3),
+         SacredValue_materials = (SV_5 == 3), 
+         SacredValue_waste = (SV_6 == 3), 
+         SacredValue_roads = (SV_7 == 3))
+
+TwDF <- TwDF %>% 
+  rowwise() %>% 
+  mutate(NumOfSacredValues = sum(SacredValue_immigration, SacredValue_family, SacredValue_nation))
+
+#eliminate single answers
+TwDF <- TwDF %>% 
+  select(-starts_with("Med_"), -(starttime:Med), -(SV_1:SV_7))
+
+# #descriptives
+ TwDF %>%
+   select(starts_with("SV_")) %>%
+   group_by() %>%
+   skim()
+ 
+#DEL 1 AL 8 SON SV CON MORAL-EMOTIONAL LANGUAGE
+#DEL 9 AL 16 SON N-SV CON MORAL-EMOTIONAL LANGUAGE
+#DEL 17 AL 24 SON SV CON NEUTRAL LANGUAGE
+#DEL 25 AL 32 SON N-SV CON NEUTRAL LANGUAGE
+
+TwDF <- TwDF %>%
+  rowwise() %>% 
+  mutate(Baseline_emo_sv = mean(c(Baseline_1, Baseline_2, Baseline_3, Baseline_4, Baseline_5, Baseline_6, Baseline_7, Baseline_8), na.rm = T),
+         Baseline_neu_sv = mean(c(Baseline_17, Baseline_18, Baseline_19, Baseline_20, Baseline_21, Baseline_22, Baseline_23, Baseline_24), na.rm = T),
+         Baseline_emo_nsv = mean(c(Baseline_9, Baseline_10, Baseline_11, Baseline_12, Baseline_13, Baseline_14, Baseline_15, Baseline_16), na.rm = T),
+         Baseline_neu_nsv = mean(c(Baseline_25, Baseline_26, Baseline_27, Baseline_28, Baseline_29, Baseline_30, Baseline_31, Baseline_32), na.rm = T))
+
+TwDF <- TwDF %>%
+  rowwise() %>% 
+  mutate(Exp_G1_emo_sv = mean(c(Exp_G1_1, Exp_G1_2, Exp_G1_3, Exp_G1_4, Exp_G1_5, Exp_G1_6, Exp_G1_7, Exp_G1_8), na.rm = T), 
+         Exp_G1_neu_sv = mean(c(Exp_G1_17, Exp_G1_18, Exp_G1_19, Exp_G1_20, Exp_G1_21, Exp_G1_22, Exp_G1_23, Exp_G1_24), na.rm = T),
+         Exp_G2_emo_sv = mean(c(Exp_G2_1, Exp_G2_2, Exp_G2_3, Exp_G2_4, Exp_G2_5, Exp_G2_6, Exp_G2_7, Exp_G2_8), na.rm = T),
+         Exp_G2_neu_sv = mean(c(Exp_G2_17, Exp_G2_18, Exp_G2_19, Exp_G2_20, Exp_G2_21, Exp_G2_22, Exp_G2_23, Exp_G2_24), na.rm = T),
+         Exp_G3_emo_sv = mean(c(Exp_G3_1, Exp_G3_2, Exp_G3_3, Exp_G3_4, Exp_G3_5, Exp_G3_6, Exp_G3_7, Exp_G3_8), na.rm = T),
+          Exp_G3_neu_sv = mean(c(Exp_G3_17, Exp_G3_18, Exp_G3_19, Exp_G3_20, Exp_G3_21, Exp_G3_22, Exp_G3_23, Exp_G3_24), na.rm = T),
+         Exp_G1_G1_emo_sv = mean(c(Exp_G1_G1_1, Exp_G1_G1_2, Exp_G1_G1_3, Exp_G1_G1_4, Exp_G1_G1_5, Exp_G1_G1_6, Exp_G1_G1_7, Exp_G1_G1_8), na.rm = T),
+         Exp_G1_G1_neu_sv = mean(c(Exp_G1_G1_17, Exp_G1_G1_18, Exp_G1_G1_19, Exp_G1_G1_20, Exp_G1_G1_21, Exp_G1_G1_22, Exp_G1_G1_23, Exp_G1_G1_24), na.rm = T),
+         Exp_G2_G2_emo_sv = mean(c(Exp_G2_G2_1, Exp_G2_G2_2, Exp_G2_G2_3, Exp_G2_G2_4, Exp_G2_G2_5, Exp_G2_G2_6, Exp_G2_G2_7, Exp_G2_G2_8), na.rm = T),
+         Exp_G2_G2_neu_sv = mean(c(Exp_G2_G2_17, Exp_G2_G2_18, Exp_G2_G2_19, Exp_G2_G2_20, Exp_G2_G2_21, Exp_G2_G2_22, Exp_G2_G2_23, Exp_G2_G2_24), na.rm = T),
+         Exp_G3_G3_emo_sv = mean(c(Exp_G3_G3_1, Exp_G3_G3_2, Exp_G3_G3_3, Exp_G3_G3_4, Exp_G3_G3_5, Exp_G3_G3_6, Exp_G3_G3_7, Exp_G3_G3_8), na.rm = T),
+         Exp_G3_G3_neu_sv = mean(c(Exp_G3_G3_17, Exp_G3_G3_18, Exp_G3_G3_19, Exp_G3_G3_20, Exp_G3_G3_21, Exp_G3_G3_22, Exp_G3_G3_23, Exp_G3_G3_24), na.rm = T),
+         Exp_G1_emo_nsv = mean(c(Exp_G1_9, Exp_G1_10, Exp_G1_11, Exp_G1_12, Exp_G1_13, Exp_G1_14, Exp_G1_15, Exp_G1_16), na.rm = T), 
+         Exp_G1_neu_nsv = mean(c(Exp_G1_25, Exp_G1_26, Exp_G1_27, Exp_G1_28, Exp_G1_29, Exp_G1_30, Exp_G1_31, Exp_G1_32), na.rm = T),
+         Exp_G2_emo_nsv = mean(c(Exp_G2_9, Exp_G2_10, Exp_G2_11, Exp_G2_12, Exp_G2_13, Exp_G2_14, Exp_G2_15, Exp_G2_16), na.rm = T),
+         Exp_G2_neu_nsv = mean(c(Exp_G2_25, Exp_G2_26, Exp_G2_27, Exp_G2_28, Exp_G2_29, Exp_G2_30, Exp_G2_31, Exp_G2_32), na.rm = T),
+         Exp_G3_emo_nsv = mean(c(Exp_G3_9, Exp_G3_10, Exp_G3_11, Exp_G3_12, Exp_G3_13, Exp_G3_14, Exp_G3_15, Exp_G3_16), na.rm = T),
+          Exp_G3_neu_nsv = mean(c(Exp_G3_25, Exp_G3_26, Exp_G3_27, Exp_G3_28, Exp_G3_29, Exp_G3_30, Exp_G3_31, Exp_G3_32), na.rm = T),
+         Exp_G1_G1_emo_nsv = mean(c(Exp_G1_G1_9, Exp_G1_G1_10, Exp_G1_G1_11, Exp_G1_G1_12, Exp_G1_G1_13, Exp_G1_G1_14, Exp_G1_G1_15, Exp_G1_G1_16), na.rm = T),
+         Exp_G1_G1_neu_nsv = mean(c(Exp_G1_G1_25, Exp_G1_G1_26, Exp_G1_G1_27, Exp_G1_G1_28, Exp_G1_G1_29, Exp_G1_G1_30, Exp_G1_G1_31, Exp_G1_G1_32), na.rm = T),
+         Exp_G2_G2_emo_nsv = mean(c(Exp_G2_G2_9, Exp_G2_G2_10, Exp_G2_G2_11, Exp_G2_G2_12, Exp_G2_G2_13, Exp_G2_G2_14, Exp_G2_G2_15, Exp_G2_G2_16), na.rm = T),
+         Exp_G2_G2_neu_nsv = mean(c(Exp_G2_G2_25, Exp_G2_G2_26, Exp_G2_G2_27, Exp_G2_G2_28, Exp_G2_G2_29, Exp_G2_G2_30, Exp_G2_G2_31, Exp_G2_G2_32), na.rm = T),
+         Exp_G3_G3_emo_nsv = mean(c(Exp_G3_G3_9, Exp_G3_G3_10, Exp_G3_G3_11, Exp_G3_G3_12, Exp_G3_G3_13, Exp_G3_G3_14, Exp_G3_G3_15, Exp_G3_G3_16), na.rm = T),
+         Exp_G3_G3_neu_nsv = mean(c(Exp_G3_G3_25, Exp_G3_G3_26, Exp_G3_G3_27, Exp_G3_G3_28, Exp_G3_G3_29, Exp_G3_G3_30, Exp_G3_G3_31, Exp_G3_G3_32), na.rm = T))
+
+#eliminaate single Tweet responses
+# TwDF <- TwDF %>% 
+#   select(-(Baseline_emo_1:Exp_G3_G3_32))
+
+#merge G1, G2, G3 scores
+TwDF <- TwDF %>%
+  rowwise() %>% 
+  mutate(Exp_emo_sv = sum(c(Exp_G1_emo_sv, Exp_G2_emo_sv, Exp_G3_emo_sv), na.rm = T),
+         Exp_flag_emo_sv = sum(c(Exp_G1_G1_emo_sv, Exp_G2_G2_emo_sv, Exp_G3_G3_emo_sv), na.rm = T),
+         Exp_neu_sv = sum(c(Exp_G1_neu_sv, Exp_G2_neu_sv, Exp_G3_neu_sv), na.rm = T),
+         Exp_flag_neu_sv = sum(c(Exp_G1_G1_neu_sv, Exp_G2_G2_neu_sv, Exp_G3_G3_neu_sv), na.rm = T),
+         Exp_emo_nsv = sum(c(Exp_G1_emo_nsv, Exp_G2_emo_nsv, Exp_G3_emo_nsv), na.rm = T),
+         Exp_flag_emo_nsv = sum(c(Exp_G1_G1_emo_nsv, Exp_G2_G2_emo_nsv, Exp_G3_G3_emo_nsv), na.rm = T),
+         Exp_neu_nsv = sum(c(Exp_G1_neu_nsv, Exp_G2_neu_nsv, Exp_G3_neu_nsv), na.rm = T),
+         Exp_flag_neu_nsv = sum(c(Exp_G1_G1_neu_nsv, Exp_G2_G2_neu_nsv, Exp_G3_G3_neu_nsv), na.rm = T))
+
+#reorder data
+TwDF <- TwDF %>%
+  select(identity:Fusion, Exp_emo_sv:Exp_flag_neu_nsv, Baseline_emo_sv, Baseline_neu_sv, Baseline_emo_nsv, Baseline_neu_nsv, everything()) %>% 
+  select(-(Exp_G1_emo_sv:Exp_G3_G3_neu_nsv))%>% 
+  select(-(Baseline_1:Exp_G3_G3_32))  
+
+
+TwDF <- TwDF %>%
+  rowwise() %>%
+  mutate(Baseline_SV = mean(c(Baseline_emo_sv, Baseline_neu_sv), na.rm = T),
+         Baseline_nSV = mean(c(Baseline_emo_nsv, Baseline_neu_nsv), na.rm = T),
+         Flag_SV = mean(c(Exp_flag_emo_sv,Exp_flag_neu_sv), na.rm = T),
+         Flag_nSV = mean(c(Exp_flag_emo_nsv,Exp_flag_neu_nsv), na.rm = T))
+
+#DEL 1 AL 8 SON SV CON MORAL-EMOTIONAL LANGUAGE
+#DEL 9 AL 16 SON N-SV CON MORAL-EMOTIONAL LANGUAGE
+#DEL 17 AL 24 SON SV CON NEUTRAL LANGUAGE
+#DEL 25 AL 32 SON N-SV CON NEUTRAL LANGUAGE
+
+#MOST POPULAR: 8 AND 19 (EQUIVAL AL 3)
+
+```
+
+```{r correlations between mediators}
+
+TwDF %>%
+   select(Baseline_SV:Flag_nSV, num_SV, socialMediaUse, politicalOrientation, age, income = income_ES, education = educ_level_ES, curiosity, humility, literacy, FusionVox = Fusion, crt_intuitive, crt_correct) %>%
+  corPlot(numbers = T, scale = F, stars = T)
+
+cor.test(TwDF$crt_correct, TwDF$Baseline_SV)
+cor.test(TwDF$crt_correct, TwDF$Baseline_nSV)
+cor.test(TwDF$crt_intuitive, TwDF$Baseline_SV)
+cor.test(TwDF$crt_intuitive, TwDF$Baseline_nSV)
+
+cor.test(TwDF$literacy, TwDF$Baseline_SV)
+cor.test(TwDF$literacy, TwDF$Baseline_nSV)
+cor.test(TwDF$humility, TwDF$Baseline_SV)
+cor.test(TwDF$humility, TwDF$Baseline_nSV)
+cor.test(TwDF$curiosity, TwDF$Baseline_SV)
+
+cor.test(TwDF$curiosity, TwDF$humility)
+cor.test(TwDF$curiosity, TwDF$literacy)
+cor.test(TwDF$curiosity, TwDF$crt_correct)
+cor.test(TwDF$literacy, TwDF$crt_correct)
+cor.test(TwDF$humility, TwDF$crt_correct)
+  
+```
+
+```{r make data frame long: LongDF }
+
+# #create vectors: just flag and SV
+# prompt <- rep(c("baseline","baseline","flag", "flag"), length(unique(TwDF$identity))) #baseline, next-to-flag, flag 
+# value <- rep(c("sacredValue", "non-sacredValue", "sacredValue", "non-sacredValue"),length(unique(TwDF$identity))) #baseline, next-to-flag, flag 
+
+#create vectors: all
+language <- rep(c("moral-emotional", "moral-emotional", "neutral", "neutral","moral-emotional", "moral-emotional", "neutral", "neutral", "moral-emotional", "neutral", "moral-emotional", "neutral"),length(unique(TwDF$identity))) 
+factcheck <- rep(c("b.control","a.fact-checked", "b.control","a.fact-checked", "b.control","a.fact-checked", "b.control","a.fact-checked", "c.baseline","c.baseline","c.baseline","c.baseline"), length(unique(TwDF$identity)))
+value <- rep(c("sacred value", "sacred value", "sacred value", "sacred value","non-sacred value","non-sacred value", "non-sacred value","non-sacred value", "sacred value", "sacred value","non-sacred value","non-sacred value"),length(unique(TwDF$identity)))
+  
+#reshape data frame & analyse: emotional versus neutral language within the same individuals
+ESdf <- TwDF %>% 
+  select(identity, FactCheckGroup, votersGroup, gender, age, education, income, politicalOrientation, socialMediaUse, TwitterUse, FacebookUse, InstagramUse, curiosity, humility, literacy, crt_correct, Fusion, Fused, SacredValue_nation, SacredValue_immigration, SacredValue_family, NumOfSacredValues, Exp_emo_sv:Baseline_neu_nsv) %>% 
+  pivot_longer(cols = Exp_emo_sv:Baseline_neu_nsv, names_to = "type", values_to = "sharing") %>% 
+  cbind(., factcheck, value, language) %>% 
+  select(-type) %>% 
+  arrange(by = FactCheckGroup, votersGroup,identity, value, factcheck)
+
+save(LongDF,file="SpanishSurvey.Rda")
+
+# LongDF <- LongDF %>%
+#   mutate(prompt = fct_relevel(prompt, "no flag", "next-to-flag", "flag"))
+
+#descriptives
+table(TwDF$flagGroup, TwDF$votersGroup)
+
+# LongDF %>% 
+#   #filter(socialMediaUse > 3) %>% 
+#   #filter(Use_Tw > 1) %>% 
+#   select(identity, socialMediaUse, votersGroup, Use_Ig, Use_Tw, Use_Fb, sharing, value, language) %>% 
+#   group_by(votersGroup, value, language) %>% 
+#   skim()
+
+#check social media use responses
+# TwDF %>% 
+#   select(socialMediaUse, votersGroup, Use_Ig, Use_Tw, Use_Fb) %>% 
+#   ggplot(aes(x = socialMediaUse, fill = votersGroup))+
+#      geom_histogram(position = "dodge", stat = "count", width = 0.5)
+
+```
+
+```{r scatterplots of correlations}
+
+# scatterplot with regression lines
+ggplot(TwDF, aes(x=crt_correct, y=Baseline_SV)) +
+  geom_jitter() + 
+  theme_minimal()+
+  theme(legend.title = element_blank())+
+  #scale_fill_manual(values=c('coral2','coral4'), labels = c("non-moralized content", "moralized content"))+
+  geom_smooth(method=lm, se=T, fullrange=TRUE)+
+    #scale_color_manual(values=c('coral2','coral4'), labels = c("non-moralized content", "moralized content"))+
+  labs(x= "correct responses", y = "Likely to share")
++
+  facet_grid(~ prompt)
+
+```
+
+# Analysis
+
+```{r analysis: type of prompt}
+
+LongDF$flagGroup <- factor(LongDF$flagGroup, labels = c("Twitter \nfact-check", "Accuracy \nfact-check", "Literacy \nfact-check"))
+
+#reshape data frame & analyse: emotional versus neutral language within the same individuals
+LangFit <- LongDF %>% 
+  #filter(language %in% c("emotional")) %>% 
+  #filter(votersGroup %in% "Vox") %>% 
+  #filter(flagGroup %in% "LiteracyFlag") %>% 
+  #lmer(sharing ~  language * votersGroup + prompt + flagGroup + value + (1|identity), .)
+  lmer(sharing ~ prompt * flagGroup + (1|identity), .)
+
+summary(LangFit)
+confint(LangFit)
+
+cohen.d(LongDF$sharing[LongDF$prompt == "aflag" & LongDF$flagGroup == "AccuracyFlag"], LongDF$sharing[LongDF$prompt == "control" & LongDF$flagGroup == "AccuracyFlag"], na.rm = T, pooled = T, paired = F)
+
+PairwiseComparison <- emmeans(LangFit, pairwise ~ prompt | flagGroup)
+confint(PairwiseComparison)
+
+fig1_typefactcheck <- emmeans(LangFit, ~ prompt | flagGroup)
+fig1_typefactcheck <- as_tibble(fig1_typefactcheck)
+
+ggplot(fig1_typefactcheck, aes(flagGroup, emmean, fill = prompt)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.22,6))+
+  scale_fill_manual(values = c("coral1", "coral3", "coral4"), labels = c("baseline", "control", "fact-check"))+
+  labs(y = "Probability to share", fill = "", x = " ")
+
+```
+
+```{r analysis: prompt}
+
+LongDF$prompt <- factor(LongDF$prompt, labels = c("Baseline block (no flag)", "Experimental block (flag)"))
+
+LongDF <- LongDF %>% 
+  mutate(Fused = Fusion == 5)
+
+LangFit <- LongDF %>% 
+  #filter(language %in% c("emotional")) %>% 
+  #filter(votersGroup %in% "Vox") %>% 
+  #filter(flagGroup %in% "TwitterFlag") %>% 
+  #lmer(sharing ~  language * votersGroup + prompt + flagGroup + value + (1|identity), .)
+  lmer(sharing ~ prompt  + (1|identity), .) #curiosity and humility kind of work
+
+summary(LangFit)
+confint(LangFit)
+
+cohen.d(LongDF$sharing[LongDF$prompt == "aflag"], LongDF$sharing[LongDF$prompt == "control"], na.rm = T, pooled = T, paired = F)
+
+cohen.d(LongDF$sharing[LongDF$prompt == "a.flag" & LongDF$flagGroup == "TwitterFlag"], LongDF$sharing[LongDF$prompt == "control" & LongDF$flagGroup == "TwitterFlag"], na.rm = T, pooled = T, paired = F)
+
+PairwiseComparison <- emmeans(LangFit, pairwise ~ prompt )
+confint(PairwiseComparison)
+
+fig1 <- emmeans(LangFit, ~ prompt)
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(prompt, emmean)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  #geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.175,5))+
+  scale_fill_manual(values = c("coral1", "coral3", "coral4")) + #, labels = c("Non-moralized content", "moralized content"))+
+  labs(y = "Probability to share", fill = "Presence of flag", x = " ")
+
+```
+
+```{r analysis: values by prompt}
+
+LongDF$prompt <- factor(LongDF$prompt, labels = c("Baseline block (no flag)", "Experimental block (flag)"))
+
+#reshape data frame & analyse: emotional versus neutral language within the same individuals
+LangFit <- LongDF %>% 
+  #filter(language %in% c("emotional")) %>% 
+  #filter(votersGroup %in% "Vox") %>% 
+  #filter(flagGroup %in% "LiteracyFlag") %>% 
+  #lmer(sharing ~  language * votersGroup + prompt + flagGroup + value + (1|identity), .)
+  lmer(sharing ~ prompt * value + (1|identity), .) #curiosity and humility kind of work
+
+summary(LangFit)
+confint(LangFit)
+
+cohen.d(LongDF$sharing[LongDF$prompt == "flag" & LongDF$value == "non-sacredValue"], LongDF$sharing[LongDF$prompt == "baseline" & LongDF$value == "non-sacredValue"], na.rm = T, pooled = T, paired = T)
+
+PairwiseComparison <- emmeans(LangFit, pairwise ~ prompt | value)
+confint(PairwiseComparison)
+
+fig1 <- emmeans(LangFit, ~ prompt | value)
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(value, emmean, fill = prompt)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  #geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.175,5))+
+  scale_fill_manual(values = c("coral2", "coral3", "coral4")) + #, labels = c("Non-moralized content", "moralized content"))+
+  labs(y = "Probability to share", fill = "Presence of flag", x = " ")
+
+```
+
+```{r analyze language: YES}
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  #filter(!(prompt %in% "flag")) %>% 
+  lmer(sharing ~  language  + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LangFit, pairwise ~ language)
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$language == "emotional"], LongDF$sharing[LongDF$language == "neutral"], na.rm = T, pooled = T, paired = T)
+
+MeanValue <- LongDF %>% 
+  select(language, sharing) %>% 
+  group_by(language) %>% 
+  summarise(mean = mean(sharing), sd = sd(sharing))
+
+```
+
+```{r analyze language x Fusion: n.s.}
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  #filter(!(prompt %in% "flag")) %>% 
+  lmer(sharing ~  language * Fused + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LangFit, pairwise ~ language)
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$language == "emotional"], LongDF$sharing[LongDF$language == "neutral"], na.rm = T, pooled = T, paired = T)
+
+MeanValue <- LongDF %>% 
+  select(language, sharing) %>% 
+  group_by(language) %>% 
+  summarise(mean = mean(sharing), sd = sd(sharing))
+
+```
+
+```{r analyze sacred values: YES}
+
+LongDF$prompt <- factor(LongDF$prompt, labels = c("Baseline block (no flag)", "Experimental block"))
+
+LongFit <- LongDF %>% 
+  lmer(sharing ~ value + (1|identity), .) #* (FusionTrump == 5)
+
+summary(LongFit)
+confint(LongFit)
+
+cohen.d(LongDF$sharing[LongDF$value == "sacredValue"], LongDF$sharing[LongDF$value == "non-sacredValue"], na.rm = T, pooled = T, paired = T)
+
+LongDF$value <- as_factor(LongDF$value)
+
+MeanValue <- LongDF %>% 
+  select(value, sharing) %>% 
+  group_by(value) %>% 
+  summarise(mean = mean(sharing), sd = sd(sharing))
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ value)
+confint(PairwiseComparison)
+```
+
+```{r analyze sacred values x num of sacred values: YES}
+
+LongDF <- LongDF %>% 
+  rowwise() %>% 
+  mutate(num_SV = sum(SV_immigration, SV_feminism, SV_nationalUnity))
+
+LongDF$num_SV <- as_factor(LongDF$num_SV)
+
+LongFit <- LongDF %>% 
+  lmer(sharing ~ value * num_SV + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ value | num_SV)
+confint(PairwiseComparison)
+
+fig1 <- emmeans(LongFit, ~ value | num_SV)
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(num_SV, emmean, fill = value)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.33,7))+
+  #scale_fill_manual(values = c("coral4", "coral2"), labels = c("sees flag", "does not see flag"))+
+  labs(y = "Probability to share")
+
+```
+
+```{r forest plot showing effect size by num SV}
+
+library(effsize)
+
+#calculate all effect sizes (Hedge g)
+d_SV0 <- cohen.d(LongDF$sharing[LongDF$value == "sacredValue" & LongDF$num_SV == 0], LongDF$sharing[LongDF$value == "non-sacredValue" & LongDF$num_SV == 0], na.rm = T, pooled = T, paired = T)
+
+d_SV1 <- cohen.d(LongDF$sharing[LongDF$value == "sacredValue" & LongDF$num_SV == 1], LongDF$sharing[LongDF$value == "non-sacredValue" & LongDF$num_SV == 1], na.rm = T, pooled = T, paired = T)
+
+d_SV2 <- cohen.d(LongDF$sharing[LongDF$value == "sacredValue" & LongDF$num_SV == 2], LongDF$sharing[LongDF$value == "non-sacredValue" & LongDF$num_SV == 2], na.rm = T, pooled = T, paired = T)
+
+d_SV3 <- cohen.d(LongDF$sharing[LongDF$value == "sacredValue"  & LongDF$num_SV == 3], LongDF$sharing[LongDF$value == "non-sacredValue" & LongDF$num_SV == 3], na.rm = T, pooled = T, paired = T)
+
+#make data frame to plot
+d_df <- data.frame(Condition = c(0, 1, 2, 3), Group = c("Spanish sample"),
+                   Cohens_d = rbind(d_SV0$estimate, d_SV1$estimate, d_SV2$estimate, d_SV3$estimate), 
+                   CI = rbind(d_SV0$conf.int, d_SV1$conf.int, d_SV2$conf.int, d_SV3$conf.int))
+
+
+#plot please
+Forest_ES <- ggplot(data=d_df,
+    aes(x = Condition, y = Cohens_d, ymin = CI.lower, ymax = CI.upper))+
+    geom_pointrange(size = 0.25, shape = 5)+
+    geom_hline(yintercept =0, linetype=2)+
+    xlab("Number of sacred values") + 
+    ylab("Cohen's d (95% Confidence Interval)")+
+    ggtitle("Spanish sample")+
+    geom_errorbar(aes(ymin=CI.lower, ymax=CI.upper),width=0.15,cex=1)+ 
+    #facet_wrap(~Condition,strip.position="left",nrow=9,scales = "free_y") +
+    theme_minimal()+
+    theme(plot.title=element_text(size=11,face="bold", hjust = 0.5),
+          axis.text.y=element_text(size = 11),
+          axis.text.x=element_text(size = 11))+
+    #     axis.ticks.y=element_blank(),
+    #     strip.text.y = element_text(hjust=0,vjust = 1,angle=180,face="bold"))+
+    coord_flip()
+
+```
+
+```{r analyze moderations - crt: YES}
+
+LongDF$value <- factor(LongDF$value, labels = c("Non-sacred \nvalues", "Sacred \nvalues"))
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  lmer(sharing ~  crt_correct * value + (1|identity), .)
+
+summary(LongFit)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ crt_correct | value, at = list("crt_correct" = c(0, 3)))
+PairwiseComparison
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$value == "Sacred \nvalues" & LongDF$crt_correct == 3], LongDF$sharing[LongDF$value == "Sacred \nvalues" & LongDF$crt_correct == 0], na.rm = T, pooled = T, paired = F)
+
+cohen.d(LongDF$sharing[LongDF$value == "Non-sacred \nvalues" & LongDF$crt_correct == 3], LongDF$sharing[LongDF$value == "Non-sacred \nvalues" & LongDF$crt_correct == 0], na.rm = T, pooled = T, paired = F)
+
+fig1_crt <- emmeans(LongFit, ~ crt_correct | value, at = list("crt_correct" = c(0, 3)))
+fig1_crt <- as_tibble(fig1_crt)
+
+```
+
+```{r analyze moderations - literacy: YES}
+
+LongDF$value <- factor(LongDF$value, labels = c("Non-sacred \nvalues", "Sacred \nvalues"))
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  lmer(sharing ~  literacy * value + (1|identity), .)
+
+summary(LongFit)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~  value | literacy, at = list("literacy" = c(1, 5)))
+PairwiseComparison
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$value == "Sacred \nvalues" & LongDF$literacy == 1], LongDF$sharing[LongDF$value == "Non-sacred \nvalues" & LongDF$literacy == 1], na.rm = T, pooled = T, paired = F)
+
+
+fig1 <- emmeans(LongFit, ~  literacy | value, at = list("literacy" = c(1, 5)))
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(as.factor(literacy), emmean, fill = value)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  #geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.175,5))+
+  #scale_fill_manual(values = c("coral2", "coral3", "coral4")) + #, labels = c("Non-moralized content", "moralized content"))+
+  labs(y = "Probability to share", fill = "Presence of flag", x = " ")
+
+```
+
+```{r analyze moderations - humility: YES}
+
+LongDF$value <- factor(LongDF$value, labels = c("Non-sacred \nvalues", "Sacred \nvalues"))
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  lmer(sharing ~  humility * value + (1|identity), .)
+
+summary(LongFit)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ value | humility, at = list("humility" = c(1, 5)))
+PairwiseComparison
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$value == "Sacred \nvalues" & LongDF$humility == 3], LongDF$sharing[LongDF$value == "Non-sacred \nvalues" & LongDF$humility == 3], na.rm = T, pooled = T, paired = F)
+
+fig1 <- emmeans(LongFit, ~ humility | value, at = list("humility" = c(1, 5)))
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(as.factor(humility), emmean, fill = value)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  #geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.175,5))+
+  #scale_fill_manual(values = c("coral2", "coral3", "coral4")) + #, labels = c("Non-moralized content", "moralized content"))+
+  labs(y = "Probability to share", fill = "Presence of flag", x = " ")
+
+```
+
+```{r analyze moderations - curiosity: no}
+
+LongDF$value <- factor(LongDF$value, labels = c("Non-sacred \nvalues", "Sacred \nvalues"))
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  lmer(sharing ~  curiosity * value + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ crt_correct | value, at = list("crt_correct" = c(0, 3)))
+PairwiseComparison
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$value == "Sacred \nvalues" & LongDF$crt_correct == 3], LongDF$sharing[LongDF$value == "Sacred \nvalues" & LongDF$crt_correct == 0], na.rm = T, pooled = T, paired = F)
+
+cohen.d(LongDF$sharing[LongDF$value == "Non-sacred \nvalues" & LongDF$crt_correct == 3], LongDF$sharing[LongDF$value == "Non-sacred \nvalues" & LongDF$crt_correct == 0], na.rm = T, pooled = T, paired = F)
+
+fig1_crt <- emmeans(LongFit, ~ crt_correct | value, at = list("crt_correct" = c(0, 3)))
+fig1_crt <- as_tibble(fig1_crt)
+
+```
+
+#IDENTITY AND IDENTITY FUSION
+
+```{r analyze - fusion with party: n.s.}
+
+LongDF <- LongDF %>% 
+  mutate(Fused = Fusion == 5)
+
+LongDF$Fused <- factor(LongDF$Fused, labels = c("Non-fused with political party", "Fused with political party"))
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  filter(votersGroup %in% "far-right voters") %>% 
+  lmer(sharing ~  Fused + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ Fused)
+PairwiseComparison
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$Fused == T & LongDF$votersGroup == "far-right voters"], LongDF$sharing[LongDF$Fused == F & LongDF$votersGroup == "far-right voters"], na.rm = T, pooled = T, paired = F)
+
+MeanValue <- LongDF %>% 
+  select(value, sharing, Fused, votersGroup) %>% 
+  group_by(votersGroup, Fused) %>% 
+  summarise(mean = mean(sharing), sd = sd(sharing))
+
+```
+
+```{r analyze moderations - fusion with party x sacred values: n.s.}
+
+LongDF <- LongDF %>% 
+  mutate(Fused = Fusion == 5)
+
+MeanValue <- LongDF %>% 
+  select(value, sharing, Fused, votersGroup) %>% 
+  group_by(votersGroup, Fused, value) %>% 
+  summarise(mean = mean(sharing), sd = sd(sharing))
+
+LongDF$Fused <- factor(LongDF$Fused, labels = c("Non-fused with political party", "Fused with political party"))
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  filter(votersGroup %in% "Vox") %>% 
+  lmer(sharing ~  Fused * value  + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ value | Fused)#, at = list("FusionTrump" = c(1, 5)))
+PairwiseComparison 
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$Fused == T & LongDF$votersGroup == "Vox" & LongDF$value == "sacredValue"], LongDF$sharing[LongDF$Fused == T & LongDF$votersGroup == "Vox" & LongDF$value == "non-sacredValue"], na.rm = T, pooled = T, paired = F)
+
+fig1 <- emmeans(LongFit, ~ FusedTrump | value)
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(FusedTrump, emmean, fill = value)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.33,7))+
+  scale_fill_manual(values = c("coral4", "coral2"), labels = c("non-moralized content", "moralized content"))+
+  labs(y = "Probability to share", fill = "Type of content", x = "")
+
+```
+
+```{r fusion with party and number of SV: YES}
+
+table(TwDF$Fused[TwDF$votersGroup == "Vox"])
+
+TwDF <- TwDF %>% 
+  rowwise() %>% 
+  mutate(num_SV = sum(SV_immigration, SV_feminism, SV_nationalUnity))
+
+table(TwDF$Fused, TwDF$num_SV)
+
+means_numSV <- TwDF %>% 
+  select(num_SV, Fused, votersGroup) %>% 
+  group_by(votersGroup, Fused) %>% 
+  summarise(means = mean(num_SV), sd = sd(num_SV))
+
+TwFit <- TwDF %>% 
+  #filter(condition %in% 1) %>% 
+  filter(votersGroup %in% "PP") %>% 
+  lm(num_SV ~  Fused , .)
+ 
+summary(TwFit)
+
+PairwiseComparison <- emmeans(TwFit, pairwise ~ Fused)#, at = list("FusionTrump" = c(1, 5)))
+PairwiseComparison 
+confint(PairwiseComparison)
+
+cohen.d(TwDF$num_SV[TwDF$Fused == T & TwDF$votersGroup == "PP"], TwDF$num_SV[TwDF$Fused == F & TwDF$votersGroup == "PP"], na.rm = T, pooled = T, paired = F)
+
+```
+
+```{r analyze language x Fusion party: NO}
+
+LongDF <- LongDF %>% 
+  mutate(Fused = Fusion == 5)
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  filter(votersGroup %in% "Vox") %>% 
+  lmer(sharing ~  language * Fused + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LangFit, pairwise ~ language)
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$language == "emotional"], LongDF$sharing[LongDF$language == "neutral"], na.rm = T, pooled = T, paired = T)
+
+fig1 <- emmeans(LongFit, ~ language)
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(language, emmean)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  #geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.33,8))+
+  #scale_fill_manual(values = c("coral4", "coral2"), labels = c("Vox", "PP"))+
+  #labs(y = "Probability to share")
+  labs(y = "sharing")
++
+  facet_grid(~ condition) 
+
+```
+
+```{r analyze Vox voters: YES}
+
+LongDF$votersGroup <- factor(LongDF$votersGroup, labels = c("far-right \nvoters", "center-right \nvoters"))
+
+LongFit <- LongDF %>% 
+  lmer(sharing ~ votersGroup + (1|identity), .) #* (FusionTrump == 5)
+
+summary(LongFit)
+confint(LongFit)
+
+cohen.d(LongDF$sharing[LongDF$votersGroup == "PP"], LongDF$sharing[LongDF$votersGroup == "Vox"], na.rm = T, pooled = T, paired = F)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ votersGroup)
+confint(PairwiseComparison)
+
+
+MeanValue <- LongDF %>% 
+  select(votersGroup, sharing) %>% 
+  group_by(votersGroup) %>% 
+  summarise(mean = mean(sharing), sd = sd(sharing))
+
+```
+
+```{r analyze Vox voters x sacred values: YES}
+
+LongDF$votersGroup <- factor(LongDF$votersGroup, labels = c("far-right \nvoters", "center-right \nvoters"))
+
+LongFit <- LongDF %>% 
+  lmer(sharing ~ value * votersGroup + (1|identity), .) #* (FusionTrump == 5)
+
+summary(LongFit)
+confint(LongFit)
+
+cohen.d(LongDF$sharing[LongDF$votersGroup == "center-right voters" & LongDF$value == "sacredValue"], LongDF$sharing[LongDF$votersGroup == "center-right voters" & LongDF$value == "non-sacredValue"], na.rm = T, pooled = T, paired = F)
+
+PairwiseComparison <- emmeans(LongFit, pairwise ~ value | votersGroup)
+PairwiseComparison 
+confint(PairwiseComparison)
+
+fig1_groupES <- emmeans(LongFit, ~ value | votersGroup)
+fig1_groupES  <- as_tibble(fig1_groupES)
+
+
+```
+
+```{r Vox voters and number of SV: YES}
+
+TwDF <- TwDF %>% 
+  rowwise() %>% 
+  mutate(num_SV = sum(SV_immigration, SV_feminism, SV_nationalUnity))
+
+table(TwDF$Fused, TwDF$num_SV)
+
+means_numSV <- TwDF %>% 
+  select(num_SV, votersGroup) %>% 
+  group_by(votersGroup) %>% 
+  summarise(means = mean(num_SV), sd = sd(num_SV))
+
+TwFit <- TwDF %>% 
+  #filter(condition %in% 1) %>% 
+  lm(num_SV ~  votersGroup, .)
+ 
+summary(TwFit)
+
+cohen.d(LongDF$num_SV[LongDF$votersGroup == "PP"], LongDF$num_SV[LongDF$votersGroup == "Vox"], na.rm = T, pooled = T, paired = F)
+
+
+PairwiseComparison <- emmeans(TwFit, pairwise ~ votersGroup)#, at = list("FusionTrump" = c(1, 5)))
+confint(PairwiseComparison)
+
+fig1 <- emmeans(TwFit, ~ FusedTrump)
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(FusedTrump, emmean)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(0.33,3))+
+  scale_color_manual(values = c("coral4", "coral2"), labels = c("non-moralized content", "moralized content"))+
+  labs(y = "Number of sacred values", fill = "Type of content", x = "")
+
+```
+
+```{r analyze language x Vox voters: NO}
+
+LongDF <- LongDF %>% 
+  mutate(Fused = Fusion == 5)
+
+LongFit <- LongDF %>% 
+  #filter(condition %in% 1) %>% 
+  lmer(sharing ~  language * votersGroup + (1|identity), .)
+
+summary(LongFit)
+confint(LongFit)
+
+PairwiseComparison <- emmeans(LangFit, pairwise ~ language)
+confint(PairwiseComparison)
+
+cohen.d(LongDF$sharing[LongDF$language == "emotional"], LongDF$sharing[LongDF$language == "neutral"], na.rm = T, pooled = T, paired = T)
+
+fig1 <- emmeans(LongFit, ~ language | votersGroup)
+fig1 <- as_tibble(fig1)
+
+ggplot(fig1, aes(votersGroup, emmean, fill = language)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  #geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), position = position_dodge(0.5), width = 0.05) +
+  theme_minimal()+
+  coord_cartesian(ylim = c(1.33,8))+
+  #scale_fill_manual(values = c("coral4", "coral2"), labels = c("Vox", "PP"))+
+  #labs(y = "Probability to share")
+  labs(y = "sharing")
++
+  facet_grid(~ condition) 
+
+```
+
