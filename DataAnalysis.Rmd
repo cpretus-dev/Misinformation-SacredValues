@@ -32,9 +32,13 @@ load("data/fMRIdata.Rda")
 
 ```
 
+
 ## SACRED VALUES
+
 # How did sacred values influence misinformation sharig?
+
 Misinformation that included sacred values was *more likely to be shared* across the three samples.
+
 
 ```{r effect of sacred values}
 
@@ -42,7 +46,9 @@ Misinformation that included sacred values was *more likely to be shared* across
 #               Spanish survey
 #-------------------------------------------------
 SacredFit <- ESdf %>% 
-  lmer(sharing ~ value + (1|identity), .) 
+  group_by(identity, value) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value + (1|identity), .) 
 
 summary(SacredFit)
 PairwiseComparison <- emmeans(SacredFit, pairwise ~ value)
@@ -52,7 +58,9 @@ PairwiseComparison
 #               US survey
 #-------------------------------------------------
 SacredFit <- USdf %>% 
-  lmer(sharing ~ value + (1|identity), .) 
+  group_by(identity, value) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value + (1|identity), .) 
 
 summary(SacredFit)
 PairwiseComparison <- emmeans(SacredFit, pairwise ~ value)
@@ -62,7 +70,10 @@ PairwiseComparison
 #               fMRI study
 #-------------------------------------------------
 SacredFit <- MRdf %>% 
-  lmer(sharing ~ value + (1|identity), .)
+  filter(!(identity %in% "1823")) %>% # filter fMRI participant with excessive head movement
+  group_by(identity, value) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value + (1|identity), .)
 
 summary(SacredFit)
 PairwiseComparison <- emmeans(SacredFit, pairwise ~ value)
@@ -70,8 +81,11 @@ PairwiseComparison
 
 ```
 
+
 # Number of sacred values moderated the effect of sacred values.
+
 The more sacred values people held (out of the three sacred values we proposed about immigration, nation and traditional family values), *the more they shared* misinformation about sacred values (vs. non-sacred values).
+
 
 ```{r moderation of number of sacred values on effect of sacred values}
 
@@ -79,7 +93,9 @@ The more sacred values people held (out of the three sacred values we proposed a
 #               Spanish survey
 #-------------------------------------------------
 NumSacredFit <- ESdf %>% 
-  lmer(sharing ~ value * NumOfSacredValues + (1|identity), .) 
+  group_by(identity, value) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * NumOfSacredValues + (1|identity), .) 
 
 summary(NumSacredFit)
 
@@ -87,7 +103,9 @@ summary(NumSacredFit)
 #               US survey
 #-------------------------------------------------
 NumSacredFit <- USdf %>% 
-  lmer(sharing ~ value * NumOfSacredValues + (1|identity), .) 
+  group_by(identity, value, NumOfSacredValues) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * NumOfSacredValues + (1|identity), .) 
 
 summary(NumSacredFit)
 
@@ -95,14 +113,20 @@ summary(NumSacredFit)
 #               fMRI study
 #-------------------------------------------------
 NumSacredFit <- MRdf %>% 
-  lmer(sharing ~ value * NumOfSacredValues + (1|identity), .)
+  filter(!(identity %in% "1823")) %>% # filter fMRI participant with excessive head movement
+  group_by(identity, value, NumOfSacredValues) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * NumOfSacredValues + (1|identity), .) 
 
 summary(NumSacredFit)
 
 ```
 
+
 # Analytical thinking moderated the effect of sacred values.
+
 Analytical thinking was associated with reduced misinformation sharing for posts that tackled non-sacred values, but *did not affect* posts that tackled sacred values
+
 
 ```{r moderation of congitive reflection on the effect of sacred values}
 
@@ -111,7 +135,9 @@ Analytical thinking was associated with reduced misinformation sharing for posts
 #-------------------------------------------------
 # Number of correct responses in the Cognitive reflection test (CRT) moderated the effect of sacred values, so that more correct responses predicted reduced sharing of misinformation related to non-sacred values but was unrelated to sharing of misinformation related to sacred values.
 CrtFit <- ESdf %>% 
-  lmer(sharing ~ value * crt_correct + (1|identity), .) 
+  group_by(identity, value, crt_correct) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * crt_correct + (1|identity), .) 
 
 summary(CrtFit)
 PairwiseComparison <- emmeans(CrtFit, pairwise ~ crt_correct | value, at = list("crt_correct" = c(0, 3))) #compare no correct responses (0/3 responses) to all correct responses (3/3 responses)
@@ -122,23 +148,15 @@ PairwiseComparison
 #-------------------------------------------------
 # the CRT was not administered in the US survey
 
-#-------------------------------------------------
-#               fMRI study
-#-------------------------------------------------
-# A similar effect was found in the fMRI sample (N = 36)
-CrtFit <- MRdf %>% 
-  lmer(sharing ~ value * crt_correct + (1|identity), .)
-
-summary(CrtFit)
-PairwiseComparison <- emmeans(CrtFit, pairwise ~ crt_correct | value, at = list("crt_correct" = c(0, 3))) #compare no correct responses (0/3 responses) to all correct responses (3/3 responses)
-PairwiseComparison
-
 ```
+
 
 ## IDENTITY FUSION
 
 # Identity fusion increased misinformation sharing.
+
 Identity fusion with any of the conservative parties & Political affiliation with extreme options (far-right in Spain) was associated with *increased sharing* of posts with sacred values (vs. non-sacred values).
+
 
 ```{r effect of identity fusion & political affiliation}
 
@@ -148,7 +166,9 @@ Identity fusion with any of the conservative parties & Political affiliation wit
 ## political affiliation with the far-right (vs. center-right) increased sharing
 
 AffilFit <- ESdf %>% 
-  lmer(sharing ~ votersGroup + (1|identity), .) 
+  group_by(identity, votersGroup) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lm(mean_sharing ~ votersGroup, .) 
 
 summary(AffilFit)
 PairwiseComparison <- emmeans(AffilFit, pairwise ~ votersGroup)
@@ -158,7 +178,9 @@ PairwiseComparison
 
 FusedFit <- ESdf %>% 
   filter(votersGroup %in% "far-right") %>% 
-  lmer(sharing ~ Fused + (1|identity), .) 
+  group_by(identity, Fused) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lm(mean_sharing ~ Fused, .) 
 
 summary(FusedFit)
 PairwiseComparison <- emmeans(FusedFit, pairwise ~ Fused)
@@ -168,7 +190,9 @@ PairwiseComparison
 
 FusedFit <- ESdf %>% 
   filter(votersGroup %in% "center-right") %>% 
-  lmer(sharing ~ Fused + (1|identity), .) 
+  group_by(identity, Fused) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lm(mean_sharing ~ Fused, .) 
 
 summary(FusedFit)
 PairwiseComparison <- emmeans(FusedFit, pairwise ~ Fused)
@@ -180,7 +204,9 @@ PairwiseComparison
 ## identity fusion with Trump increased sharing
 
 FusedFit <- USdf %>% 
-  lmer(sharing ~ FusedTrump + (1|identity), .) 
+  group_by(identity, FusedTrump) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lm(mean_sharing ~ FusedTrump, .) 
 
 summary(FusedFit)
 PairwiseComparison <- emmeans(FusedFit, pairwise ~ FusedTrump)
@@ -189,7 +215,9 @@ PairwiseComparison
 ## identity fusion with the Republican party increased sharing (excluding conservatives fused with Trump)
 FusedFit <- USdf %>% 
   filter(FusedTrump %in% F) %>% 
-  lmer(sharing ~ FusedRepublican + (1|identity), .) 
+  group_by(identity, FusedRepublican) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lm(mean_sharing ~ FusedRepublican, .) 
 
 summary(FusedFit)
 PairwiseComparison <- emmeans(FusedFit, pairwise ~ FusedRepublican)
@@ -202,28 +230,36 @@ PairwiseComparison
 
 ```
 
-# Identity fusion with extreme political options moderated effect of sacred values.
-Identity fusion with the far-right in Spain and Trump in the US was associated with *increased sharing* of posts including sacred values (vs. non-sacred values).
+
+# Identity fusion with extreme political options (Trump supporters) moderated effect of sacred values.
+
+Identity fusion with Trump in the US was associated with *increased sharing* of posts including sacred values (vs. non-sacred values).
+
 
 ```{r moderation of identity fusion on effect of sacred values}
 
 #-------------------------------------------------
 #               Spanish survey
 #-------------------------------------------------
-## identity fusion with the far-right increased sharing of posts with sacred values (vs. non-sacred values)
+## identity fusion with the far-right did not affect sharing of posts with sacred values (vs. non-sacred values)
 
 ValueFusedFit <- ESdf %>% 
   filter(votersGroup %in% "far-right") %>% 
-  lmer(sharing ~ value * Fused + (1|identity), .) 
+  group_by(identity, value, Fused) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * Fused + (1|identity), .) 
 
 summary(ValueFusedFit)
 PairwiseComparison <- emmeans(ValueFusedFit, pairwise ~ value | Fused)
 PairwiseComparison
 
-## however, no interaction with value was found with fusion with the center-right
+
+## no interaction with value was found with fusion with the center-right
 ValueFusedFit <- ESdf %>% 
   filter(votersGroup %in% "center-right") %>% 
-  lmer(sharing ~ value * Fused + (1|identity), .) 
+  group_by(identity, value, Fused) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * Fused + (1|identity), .)  
 
 summary(ValueFusedFit)
 PairwiseComparison <- emmeans(ValueFusedFit, pairwise ~ value | Fused)
@@ -235,7 +271,9 @@ PairwiseComparison
 ## identity fusion with Trump increased sharing of posts with sacred values (vs. non-sacred values)
 
 ValueFusedFit <- USdf %>% 
-  lmer(sharing ~ value * FusedTrump + (1|identity), .) 
+  group_by(identity, value, FusedTrump) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * FusedTrump + (1|identity), .)  
 
 summary(ValueFusedFit)
 PairwiseComparison <- emmeans(ValueFusedFit, pairwise ~ value | FusedTrump)
@@ -244,7 +282,9 @@ PairwiseComparison
 ## however, no interaction with value was found with fusion with the Republican party
 ValueFusedFit <- USdf %>% 
   filter(FusedTrump %in% F) %>% 
-  lmer(sharing ~ value * FusedRepublican + (1|identity), .) 
+  group_by(identity, value, FusedRepublican) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ value * FusedRepublican + (1|identity), .)  
 
 summary(ValueFusedFit)
 PairwiseComparison <- emmeans(ValueFusedFit, pairwise ~ value | FusedRepublican)
@@ -252,34 +292,43 @@ PairwiseComparison
 
 ```
 
+
 ## FACT-CHECKING
 
 # Fact-checking only had a small effect in non-fused samples.
+
 Fact-checking did not have any effect on misinformation sharing in the Spanish sample. The group that was exposed to the Twitter fact-check showed a slight reduction in sharing when analysed separately. Fact-checks had some effect in participants who were not fused with Trump in the US survey, but had no effect for those fused with Trump.
+
 
 ```{r effect of fact-checking}
 
 #-------------------------------------------------
 #               Spanish survey
 #-------------------------------------------------
-## factchecking had no effect on sharing when compared to control trials. However, there is an increase in sharing in fact-check trials compared to baseline. In the US survey we investigate whether this increase from baseline is a temporal effect or a backfire effect from fact-checking by including a control group with no fact-checks.
+## factchecking had no effect on sharing when compared to control trials (p = 0.08). However, there is an increase in sharing in fact-check trials compared to baseline. In the US survey we investigate whether this increase from baseline is a temporal effect or a backfire effect from fact-checking by including a control group with no fact-checks.
 FactCheckFit <- ESdf %>% 
-  lmer(sharing ~ factcheck + (1|identity), .)
+  group_by(identity, factcheck) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ factcheck + (1|identity), .)
 
 summary(FactCheckFit)
 
 ## type of fact-check (Twitter, Accuracy, Literacy) did not moderate the effect of fact-checked trials compared to control trials
 FactCheckFit <- ESdf %>% 
-  lmer(sharing ~ factcheck * FactCheckGroup + (1|identity), .)
+  group_by(identity, factcheck, FactCheckGroup) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ factcheck * FactCheckGroup + (1|identity), .)
 
 summary(FactCheckFit)
-PairwiseComparison <- emmeans(FactCheckFit, pairwise ~ factcheck | FactCheckGroup)
+PairwiseComparison <- emmeans(FactCheckFit, pairwise ~ factcheck |  FactCheckGroup)
 PairwiseComparison
 
 # there is a very small effect of the Twitter fact-check when analysed separately
 FactCheckFit <- ESdf %>% 
   filter(FactCheckGroup %in% "Twitter") %>% 
-  lmer(sharing ~ factcheck  + (1|identity), .)
+  group_by(identity, factcheck) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ factcheck + (1|identity), .)
 
 summary(FactCheckFit)
 
@@ -291,11 +340,14 @@ summary(FactCheckFit)
 # In this analysis, we excluded control trials in experimental participants, in order to directly compare control trials (vs. baseline) in control participants with fact-checked trials (vs. baseline) in experimental participants.
 FactCheckFit <- USdf %>% 
   filter(!(Group %in% "fact-checked" & factcheck %in% "control")) %>% 
-  lmer(sharing ~ Group * block + (1|identity), .)
+  group_by(identity, Group, block) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ Group * block + (1|identity), .)
 
 summary(FactCheckFit)
 PairwiseComparison <- emmeans(FactCheckFit, pairwise ~ block | Group)
 confint(PairwiseComparison)
+
 
 ```
 
@@ -309,7 +361,9 @@ confint(PairwiseComparison)
 ## The fact-check was particularly ineffective for participants fused with Trump, who showed no change in sharing in fact-checked compared to the control trials, while some change was observed in non-fused participants.
 FactCheckFit <- USdf %>% 
   filter(Group %in% "fact-checked") %>% 
-  lmer(sharing ~ factcheck * FusedTrump + (1|identity), .)
+  group_by(identity, factcheck, FusedTrump) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ factcheck * FusedTrump + (1|identity), .)
 
 summary(FactCheckFit)
 PairwiseComparison <- emmeans(FactCheckFit, pairwise ~ factcheck | FusedTrump)
@@ -326,7 +380,9 @@ PairwiseComparison
 #-------------------------------------------------
 ## sacred values do not affect participant's response to fact-checks
 FactCheckFit <- ESdf %>% 
-  lmer(sharing ~ factcheck * value + (1|identity), .)
+  group_by(identity, factcheck, value) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ factcheck * value + (1|identity), .)
 
 summary(FactCheckFit)
 
@@ -335,8 +391,10 @@ summary(FactCheckFit)
 #-------------------------------------------------
 ## sacred values do not affect participant's response to fact-checks
 FactCheckFit <- USdf %>% 
-  filter(Group %in% "fact-checked") %>% 
-  lmer(sharing ~ factcheck * value + (1|identity), .)
+  filter(Group %in% "fact-checked") %>%
+  group_by(identity, factcheck, value) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ factcheck * value + (1|identity), .)
 
 summary(FactCheckFit)
 
@@ -344,7 +402,9 @@ summary(FactCheckFit)
 
 
 ## OTHER EFFECTS: 
+
 Moral-emotional language had mixed effects across samples. 
+
 
 ```{r effect of moral-emotional language}
 
@@ -353,13 +413,17 @@ Moral-emotional language had mixed effects across samples.
 #-------------------------------------------------
 ## moral-emotional language slightly increased sharing in the Spanish sample
 LanguageFit <- ESdf %>% 
-  lmer(sharing ~ language + (1|identity), .)
+  group_by(identity, language) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ language + (1|identity), .)
 
 summary(LanguageFit)
 
-## we thought language would affect non-sacred values to a greater extent compared to sacred values, because sacred values are highly salient regardless of the wording, but the interaction between language and value was non-significant (p = 0.07)
+## we thought language would affect non-sacred values to a greater extent compared to sacred values, because sacred values are highly salient regardless of the wording, but the interaction between language and value was non-significant (p = 0.11)
 LanguageFit <- ESdf %>% 
-  lmer(sharing ~ language * value + (1|identity), .)
+  group_by(identity, language, value) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ language * value + (1|identity), .)
 
 summary(LanguageFit)
 
@@ -368,13 +432,17 @@ summary(LanguageFit)
 #-------------------------------------------------
 ## Moral-emotional language did not have an effect on sharing in the US sample
 LanguageFit <- USdf %>% 
-  lmer(sharing ~ language + (1|identity), .)
+  group_by(identity, language) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ language + (1|identity), .)
 
 summary(LanguageFit)
 
 # However, participants fused with Trump were more responsive to language, increasing sharing of items that included moral-emotional language
 LanguageFit <- USdf %>% 
-  lmer(sharing ~ language * FusedTrump + (1|identity), .)
+  group_by(identity, language, FusedTrump) %>% 
+  summarise(mean_sharing = mean(sharing, na.rm = T)) %>% 
+  lmer(mean_sharing ~ language * FusedTrump + (1|identity), .)
 
 summary(LanguageFit)
 
